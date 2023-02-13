@@ -1,6 +1,8 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/gopacket v1.1.19 h1:ves8RnFZPGiFnTS0uPQStjwru6uO6h+nlr9j6fL7kF8=
 github.com/google/gopacket v1.1.19/go.mod h1:iJ8V8n6KS+z2U1A8pUwu8bW5SyEMkXJB8Yo/Vo+TKTo=
+github.com/hashicorp/go-version v1.6.0 h1:feTTfFNnjP967rlCxM/I9g701jU+RN74YKx2mOkIeek=
+github.com/hashicorp/go-version v1.6.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/pion/logging v0.2.2 h1:M9+AIj/+pxNsDfAT64+MAVgJO0rsyLnoJKCqf//DoeY=
 github.com/pion/logging v0.2.2/go.mod h1:k0/tDVsRCX2Mb2ZEmTqNa7CWsQPc+YYCB7Q+5pahoms=
 github.com/pion/transport v0.12.3/go.mod h1:OViWW9SP2peE/HbwBvARicmAVnesphkNkCVZIWJ6q9A=
@@ -11,6 +13,8 @@ github.com/takc923/mdns v0.0.6 h1:XryXsZmBtHbgegxZjAusNFK2VtMA1Zj5j4UREXba8bs=
 github.com/takc923/mdns v0.0.6/go.mod h1:BkQWeunxWSyWChfeFuPLeNjBac/z8H/Y2UwGFdbYIMA=
 github.com/takc923/scandev v0.0.2 h1:hmPJ/EKvEvs6obcw/D4Oi9vX0z7h7DGVr535GN9vOjE=
 github.com/takc923/scandev v0.0.2/go.mod h1:JlTQs1fjNgE2i5evcUFiYcVfDiCbsfvbYbJUxx/2qXo=
+github.com/umahmood/macvendors v0.0.0-20171210033158-3fe2f521558c h1:T7OSSjh7j67s3SJSAk89udAmk4QemL9rtPf2kcdnBC0=
+github.com/umahmood/macvendors v0.0.0-20171210033158-3fe2f521558c/go.mod h1:Jlds6LTXoaMiD75OqpJzMDmqYN+/m/gUrQ/k9nH4ZaU=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/lint v0.0.0-20200302205851-738671d3881b/go.mod h1:3xt1FjdF8hUf6vQPIChWIBhFzV8gjjsPE/fR3IyQdNY=
