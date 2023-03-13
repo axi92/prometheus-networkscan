@@ -8,4 +8,4 @@ Export metrics for Prometheus for all found devices on that network.
 
 Inside container:
 
-`apt update && apt install -y libpcap-dev && go build -buildvcs=false`
+`apt update && apt install -y libpcap-dev && wget "https://maclookup.app/downloads/json-database/get-db" -O mac-vendors-export.json && go build -buildvcs=false`

@@ -15,3 +15,7 @@
 # vendor/
 
 prometheusNetworkscan
+
+src/mac-vendors-export.json
+
+prometheus-networkscan
