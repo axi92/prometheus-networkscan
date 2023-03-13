@@ -33,7 +33,7 @@ jobs:
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: linux-binary
+        name: linux
         path: prometheus-networkscan
 
   build-win:
@@ -58,5 +58,5 @@ jobs:
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: linux-binary
+        name: windows
         path: prometheus-networkscan.exe
