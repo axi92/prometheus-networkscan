@@ -15,11 +15,9 @@ import (
 	"bytes"
 	"embed"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"sort"
@@ -32,21 +30,20 @@ import (
 	"github.com/google/gopacket/pcap"
 	"github.com/hashicorp/go-version"
 	"github.com/tidwall/gjson"
-	"github.com/umahmood/macvendors"
 )
 
 type device struct {
-	ip             string // IP address of the device
-	vendor         string // vendor name from mac
-	mac            string // IEEE MAC-48, EUI-48 and EUI-64 form
-	apiRequestDone bool
+	ip       string // IP address of the device
+	vendor   string // vendor name from mac
+	mac      string // IEEE MAC-48, EUI-48 and EUI-64 form
+	lastseen int64
 }
 
 // var devices map[string]device
 // m :=       make(map[string]float64)
 var devices = make(map[string]device)
-var vendor = macvendors.New()
 var bindAddress string
+var bindPort int
 
 //go:embed src
 var fsEmbed embed.FS
@@ -56,6 +53,7 @@ var macData, macReadError = fsEmbed.ReadFile("src/mac-vendors-export.json")
 
 func init() {
 	flag.StringVar(&bindAddress, "bindAddress", "", "Address to bind the webserver for /metrics. Default empty = listening an all interfaces")
+	flag.IntVar(&bindPort, "bindPort", 3000, "Port to bind the webserver for /metrics. Default 3000")
 	flag.Parse()
 	check(macReadError)
 }
@@ -81,7 +79,7 @@ func main() {
 	}
 	handler := http.HandlerFunc(handleRequest)
 	http.Handle("/metrics", handler)
-	http.ListenAndServe(fmt.Sprintf("%v:3000", bindAddress), nil)
+	http.ListenAndServe(fmt.Sprintf("%v:%v", bindAddress, bindPort), nil)
 
 	// Go function
 	go func() {
@@ -190,28 +188,22 @@ func readARP(handle *pcap.Handle, iface *net.Interface, stop chan struct{}) {
 			// all information is good information :)
 			// devices = append(devices, device{ip: net.IP(arp.SourceProtAddress), mac: net.HardwareAddr(arp.SourceHwAddress)})
 
-			// log.Printf("IP %v is at %v", net.IP(arp.SourceProtAddress), net.HardwareAddr(arp.SourceHwAddress))
-			// log.Print("---")
-			// fmt.Printf("%v - %v\n", net.HardwareAddr(arp.SourceHwAddress), devices[fmt.Sprint(net.IP(arp.SourceProtAddress))].vendor)
-			fmt.Println(fmt.Sprint(net.HardwareAddr(arp.SourceHwAddress)[:3]))
 			result := gjson.Get(string(macData), "#(macPrefix=="+strings.ToUpper(fmt.Sprint(net.HardwareAddr(arp.SourceHwAddress)[:3])+")"))
 			var vendor string
 			if result.Exists() {
 				// fmt.Println(result)
-				vendor = result.String()
-				fmt.Println(vendor)
+				vendor = gjson.Get(result.String(), "vendorName").String()
 			} else {
-				fmt.Println("unknown")
+				vendor = "Unknown"
 			}
-			devices[fmt.Sprint(net.IP(arp.SourceProtAddress))] = device{ip: fmt.Sprint(net.IP(arp.SourceProtAddress)), mac: fmt.Sprint(net.HardwareAddr(arp.SourceHwAddress)), vendor: vendor}
-			// if devices[fmt.Sprint(net.IP(arp.SourceProtAddress))].vendor == "" {
-			// 	var vendor, err = getVendor(fmt.Sprint(net.HardwareAddr(arp.SourceHwAddress)))
-			// 	if err == nil {
-			// 		devices[fmt.Sprint(net.IP(arp.SourceProtAddress))] = device{ip: fmt.Sprint(net.IP(arp.SourceProtAddress)), mac: fmt.Sprint(net.HardwareAddr(arp.SourceHwAddress)), vendor: vendor}
-			// 	} else {
-			// 		devices[fmt.Sprint(net.IP(arp.SourceProtAddress))] = device{ip: fmt.Sprint(net.IP(arp.SourceProtAddress)), mac: fmt.Sprint(net.HardwareAddr(arp.SourceHwAddress))}
-			// 	}
-			// }
+			devices[fmt.Sprint(net.IP(arp.SourceProtAddress))] = device{ip: fmt.Sprint(net.IP(arp.SourceProtAddress)), mac: fmt.Sprint(net.HardwareAddr(arp.SourceHwAddress)), vendor: vendor, lastseen: time.Now().Unix()}
+			for key, element := range devices {
+				// fmt.Println("Key:", key, "=>", "Element:", element.lastseen)
+				if time.Now().Unix()-1*60 > element.lastseen {
+					delete(devices, key)
+					fmt.Print("device removed!", element)
+				}
+			}
 		}
 	}
 }
@@ -282,44 +274,9 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintln("# HELP", metricName, "Online network devices.")))
 	w.Write([]byte(fmt.Sprintln("# TYPE", metricName, "status")))
 	for _, k := range keys {
-		w.Write([]byte(fmt.Sprintf("%v{ip=%v, mac=%v, vendor=%v} 1\n", metricName, k, devices[k].mac, devices[k].vendor))) //devices[k]
+		w.Write([]byte(fmt.Sprintf("%v{ip=\"%v\", mac=\"%v\", vendor=\"%v\"} 1\n", metricName, k, devices[k].mac, devices[k].vendor))) //devices[k]
 	}
 	return
-}
-
-func getVendor(MacAddr string) (string, error) {
-	// MacAddr Address Flag
-	mvAPI := "https://api.macvendors.com/" + MacAddr
-	fmt.Println("requesting:", mvAPI)
-	resp, _ := http.Get(mvAPI)
-	body, err := ioutil.ReadAll(resp.Body)
-	var response string
-
-	if string(body[0]) == "{" {
-		type ErrorJSON struct {
-			Detail  string
-			Message string
-		}
-		type APIError struct {
-			Errors ErrorJSON
-		}
-		var testjson APIError
-		json.Unmarshal([]byte(string(body)), &testjson)
-		fmt.Println(testjson.Errors.Detail)
-		if testjson.Errors.Detail == "Too Many Requests" {
-			return "", errors.New(fmt.Sprintf("API Error: %v", testjson.Errors.Detail))
-		} else if testjson.Errors.Detail == "Not Found" {
-			return "Unknown", nil
-		}
-	}
-	if err != nil {
-		defer resp.Body.Close()
-		response = fmt.Sprintf("%s", err)
-	} else {
-		defer resp.Body.Close()
-		response = fmt.Sprintf("%s", body)
-	}
-	return response, nil
 }
 
 type byVersion []string
