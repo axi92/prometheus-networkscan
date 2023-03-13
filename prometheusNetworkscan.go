@@ -27,7 +27,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
+	"github.com/google/gopacket/pcap" // needs "apt-get install libpcap-dev" on ubuntu
 	"github.com/hashicorp/go-version"
 	"github.com/tidwall/gjson"
 )
@@ -44,14 +44,16 @@ type device struct {
 var devices = make(map[string]device)
 var bindAddress string
 var bindPort int
+var interfaceName string
 
 //go:embed src
 var fsEmbed embed.FS
 var macData, macReadError = fsEmbed.ReadFile("src/mac-vendors-export.json")
 
-// var macData, macReadError = fs.ReadFile(fsEmbed, "mac-vendors-export.json")
+var mutex = &sync.Mutex{}
 
 func init() {
+	flag.StringVar(&interfaceName, "interfaceName", "", "Network interface to scan. Example: enp38s0")
 	flag.StringVar(&bindAddress, "bindAddress", "", "Address to bind the webserver for /metrics. Default empty = listening an all interfaces")
 	flag.IntVar(&bindPort, "bindPort", 3000, "Port to bind the webserver for /metrics. Default 3000")
 	flag.Parse()
@@ -64,8 +66,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	ticker := time.NewTicker(1500 * time.Millisecond)
-	eventEndTicker := make(chan bool)
 	var wg sync.WaitGroup
 	for _, iface := range ifaces {
 		wg.Add(1)
@@ -81,25 +81,6 @@ func main() {
 	http.Handle("/metrics", handler)
 	http.ListenAndServe(fmt.Sprintf("%v:%v", bindAddress, bindPort), nil)
 
-	// Go function
-	go func() {
-		// Using for loop
-		fmt.Println("go routine")
-		for {
-			// Select statement
-			select {
-			// Case statement
-			case <-eventEndTicker:
-				fmt.Println("Completed!")
-				return
-			// Case to print current time
-			case tm := <-ticker.C:
-				// TODO: for loop over devices
-				fmt.Println("The Current time is: ", tm)
-			}
-		}
-	}()
-
 	// Wait for all interfaces' scans to complete.  They'll try to run
 	// forever, but will stop on an error, so if we get past this Wait
 	// it means all attempts to write have failed.
@@ -112,6 +93,9 @@ func main() {
 // it's ever unable to write a packet.
 func scan(iface *net.Interface) error {
 	// We just look for IPv4 addresses, so try to find if the interface has one.
+	if iface.Name != interfaceName && interfaceName != "" {
+		return nil
+	}
 	var addr *net.IPNet
 	if addrs, err := iface.Addrs(); err != nil {
 		return err
@@ -130,11 +114,11 @@ func scan(iface *net.Interface) error {
 	}
 	// Sanity-check that the interface has a good address.
 	if addr == nil {
-		return errors.New("no good IP network found")
+		return errors.New("no good IP network found\n")
 	} else if addr.IP[0] == 127 {
-		return errors.New("skipping localhost")
+		return errors.New("skipping localhost\n")
 	} else if addr.Mask[0] != 0xff || addr.Mask[1] != 0xff {
-		return errors.New("mask means network is too large")
+		return errors.New("mask means network is too large\n")
 	}
 	fmt.Printf("Using network range %v for interface %v\n", addr, iface.Name)
 
@@ -196,12 +180,16 @@ func readARP(handle *pcap.Handle, iface *net.Interface, stop chan struct{}) {
 			} else {
 				vendor = "Unknown"
 			}
+			mutex.Lock()
 			devices[fmt.Sprint(net.IP(arp.SourceProtAddress))] = device{ip: fmt.Sprint(net.IP(arp.SourceProtAddress)), mac: fmt.Sprint(net.HardwareAddr(arp.SourceHwAddress)), vendor: vendor, lastseen: time.Now().Unix()}
+			mutex.Unlock()
 			for key, element := range devices {
 				// fmt.Println("Key:", key, "=>", "Element:", element.lastseen)
 				if time.Now().Unix()-1*60 > element.lastseen {
+					mutex.Lock()
 					delete(devices, key)
-					fmt.Print("device removed!", element)
+					mutex.Unlock()
+					fmt.Print("device removed!", element, "\n")
 				}
 			}
 		}
