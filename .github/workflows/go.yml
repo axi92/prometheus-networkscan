@@ -11,8 +11,8 @@ on:
 
 jobs:
 
-  build-linux:
-    runs-on: ubuntu-latest
+  build-ubuntu22:
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
 
@@ -36,7 +36,63 @@ jobs:
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: linux
+        name: linux-with-glibc2.35
+        path: prometheus-networkscan
+
+  build-ubuntu20:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install libpcap-dev
+      run: sudo apt install -y libpcap-dev
+
+    - name: Fetch mac vendor db
+      run: wget "https://maclookup.app/downloads/json-database/get-db" -O src/mac-vendors-export.json
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.20.2
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: List dir for debug
+      run: ls -lha
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: linux-with-glibc2.31
+        path: prometheus-networkscan
+
+  build-ubuntu18:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install libpcap-dev
+      run: sudo apt install -y libpcap-dev
+
+    - name: Fetch mac vendor db
+      run: wget "https://maclookup.app/downloads/json-database/get-db" -O src/mac-vendors-export.json
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.20.2
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: List dir for debug
+      run: ls -lha
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: linux-with-glibc2.27
         path: prometheus-networkscan
 
   build-win:
