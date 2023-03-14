@@ -260,7 +260,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	var metricName string = "networkscanner"
 	w.Write([]byte(fmt.Sprintln("# HELP", metricName, "Online network devices.")))
-	w.Write([]byte(fmt.Sprintln("# TYPE", metricName, "status")))
+	w.Write([]byte(fmt.Sprintln("# TYPE", metricName, "gauge")))
 	for _, k := range keys {
 		w.Write([]byte(fmt.Sprintf("%v{ip=\"%v\", mac=\"%v\", vendor=\"%v\"} 1\n", metricName, k, devices[k].mac, devices[k].vendor))) //devices[k]
 	}
