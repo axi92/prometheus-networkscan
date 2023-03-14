@@ -45,6 +45,7 @@ var devices = make(map[string]device)
 var bindAddress string
 var bindPort int
 var interfaceName string
+var removeAfterLastseen int64 // in seconds
 
 //go:embed src
 var fsEmbed embed.FS
@@ -58,6 +59,7 @@ func init() {
 	flag.IntVar(&bindPort, "bindPort", 3000, "Port to bind the webserver for /metrics. Default 3000")
 	flag.Parse()
 	check(macReadError)
+	removeAfterLastseen = 2 * 60
 }
 
 func main() {
@@ -185,7 +187,7 @@ func readARP(handle *pcap.Handle, iface *net.Interface, stop chan struct{}) {
 			mutex.Unlock()
 			for key, element := range devices {
 				// fmt.Println("Key:", key, "=>", "Element:", element.lastseen)
-				if time.Now().Unix()-1*60 > element.lastseen {
+				if time.Now().Unix()-removeAfterLastseen > element.lastseen {
 					mutex.Lock()
 					delete(devices, key)
 					mutex.Unlock()
